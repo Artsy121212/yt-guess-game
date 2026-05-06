@@ -2,44 +2,12 @@
 <html>
 <head>
   <title>YouTube Guess Game</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 60px;
-    }
-
-    input {
-      padding: 10px;
-      width: 250px;
-      font-size: 16px;
-    }
-
-    button {
-      padding: 10px 15px;
-      margin: 5px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    #comment {
-      font-size: 22px;
-      margin-bottom: 20px;
-    }
-
-    #result {
-      margin-top: 20px;
-      font-size: 18px;
-    }
-  </style>
 </head>
 <body>
 
 <h2 id="comment">Loading...</h2>
 
 <input id="guess" placeholder="Type video guess">
-<br><br>
-
 <button onclick="submitGuess()">Submit</button>
 <button onclick="skipRound()">Skip</button>
 
@@ -48,12 +16,9 @@
 <script>
 let currentData = null;
 
-// ----------------------
-// LOAD NEW ROUND
-// ----------------------
 async function newRound() {
     try {
-        const res = await fetch("/round");
+        const res = await fetch("http://localhost:3000/round");
         currentData = await res.json();
 
         document.getElementById("comment").innerText = currentData.comment;
@@ -64,25 +29,21 @@ async function newRound() {
     }
 }
 
-// ----------------------
-// SUBMIT GUESS
-// ----------------------
 async function submitGuess() {
     const guess = document.getElementById("guess").value;
 
-    if (!guess || guess.length < 2) {
-        document.getElementById("result").innerText = "Type something real 😭";
+    if (guess.length < 3) {
+        document.getElementById("result").innerText = "Type something real bro 😭";
         return;
     }
 
-    const res = await fetch("/guess", {
+    const res = await fetch("http://localhost:3000/guess", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
-            guess: guess,
-            answer: currentData.answer
+            guess,
+            answer: currentData.answer,
+            tags: currentData.tags
         })
     });
 
@@ -91,18 +52,14 @@ async function submitGuess() {
     document.getElementById("result").innerText =
         "Score: " + data.score + "% | Answer: " + currentData.answer;
 
-    setTimeout(newRound, 2000);
+    setTimeout(newRound, 3000);
 }
 
-// ----------------------
-// SKIP ROUND
-// ----------------------
 function skipRound() {
     document.getElementById("result").innerText = "Skipped 😶";
     setTimeout(newRound, 1000);
 }
 
-// start game
 newRound();
 </script>
 
