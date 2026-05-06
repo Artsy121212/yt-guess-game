@@ -1,118 +1,107 @@
 const express = require("express");
 const path = require("path");
-const axios = require("axios");
 
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const YT_API_KEY = process.env.YT_API_KEY;
-
 // -----------------------------
-// GET RANDOM VIDEO FROM YOUTUBE
+// VIDEO DATABASE (ADD YOUR OWN)
 // -----------------------------
-async function getRandomVideo() {
-    const queries = [
-        "minecraft 100 days",
-        "fortnite funny moments",
-        "survival challenge",
-        "speedrun world record",
-        "hardcore minecraft"
+function getRandomVideo() {
+    const videos = [
+        {
+            title: "Minecraft Hardcore 100 Days",
+            tags: ["minecraft", "survival"]
+        },
+        {
+            title: "I Survived 100 Days in Minecraft",
+            tags: ["minecraft", "challenge"]
+        },
+        {
+            title: "Fortnite Funny Moments",
+            tags: ["fortnite", "gaming"]
+        },
+        {
+            title: "Speedrun World Record Attempt",
+            tags: ["speedrun", "gaming"]
+        }
     ];
 
-    const query = queries[Math.floor(Math.random() * queries.length)];
+    return videos[Math.floor(Math.random() * videos.length)];
+}
 
-    const res = await axios.get(
-        "https://www.googleapis.com/youtube/v3/search",
-        {
-            params: {
-                key: YT_API_KEY,
-                part: "snippet",
-                q: query,
-                type: "video",
-                maxResults: 10
-            }
-        }
-    );
+// -----------------------------
+// HINT SYSTEM (NO API NEEDED)
+// -----------------------------
+function generateHints(video) {
+    const title = video.title.toLowerCase();
+    const tags = video.tags || [];
+    const hints = [];
 
-    const items = res.data.items;
-
-    if (!items || items.length === 0) {
-        throw new Error("No videos found");
+    // Minecraft hints
+    if (title.includes("minecraft") || tags.includes("minecraft")) {
+        hints.push(
+            "minecraft content is always chaos 💀",
+            "bro really built a whole life out of blocks",
+            "survival mode is NOT peaceful here",
+            "why is minecraft always suffering"
+        );
     }
 
-    const video = items[Math.floor(Math.random() * items.length)];
+    // 100 days challenge
+    if (title.includes("100 days")) {
+        hints.push(
+            "100 days is insane dedication",
+            "bro did NOT touch grass for months",
+            "this challenge takes patience fr",
+            "i would’ve quit day 2 💀"
+        );
+    }
 
-    return {
-        id: video.id.videoId,
-        title: video.snippet.title
-    };
-}
+    // Fortnite
+    if (title.includes("fortnite") || tags.includes("fortnite")) {
+        hints.push(
+            "build fights got crazy in this one",
+            "bro was cranking 90s for survival",
+            "fortnite chaos energy 💀"
+        );
+    }
 
-// -----------------------------
-// GET REAL YOUTUBE COMMENTS
-// -----------------------------
-async function getYouTubeComments(videoId) {
-    const res = await axios.get(
-        "https://www.googleapis.com/youtube/v3/commentThreads",
-        {
-            params: {
-                key: YT_API_KEY,
-                part: "snippet",
-                videoId: videoId,
-                maxResults: 20,
-                textFormat: "plainText"
-            }
-        }
+    // Speedrun
+    if (title.includes("speedrun")) {
+        hints.push(
+            "this run was way too optimized",
+            "milliseconds mattered in this one",
+            "speedrunners are built different"
+        );
+    }
+
+    // fallback hints
+    hints.push(
+        "this looked harder than expected",
+        "people struggled a LOT in this one",
+        "this challenge went off the rails 💀"
     );
 
-    return res.data.items.map(
-        item => item.snippet.topLevelComment.snippet.textDisplay
-    );
-}
-
-// -----------------------------
-// FILTER COMMENTS INTO HINTS
-// -----------------------------
-function filterHints(comments) {
-    return comments.filter(c =>
-        c &&
-        c.length > 10 &&
-        c.length < 140 &&
-        !c.toLowerCase().includes("http") &&
-        !c.toLowerCase().includes("subscribe") &&
-        !c.toLowerCase().includes("first")
-    );
+    return hints;
 }
 
 // -----------------------------
 // ROUND ROUTE
 // -----------------------------
-app.get("/round", async (req, res) => {
-    try {
-        const video = await getRandomVideo();
+app.get("/round", (req, res) => {
+    const video = getRandomVideo();
+    const hints = generateHints(video);
 
-        const comments = await getYouTubeComments(video.id);
-        const hints = filterHints(comments);
+    const comment = hints[Math.floor(Math.random() * hints.length)];
 
-        const comment =
-            hints[Math.floor(Math.random() * hints.length)] ||
-            "this video was actually insane 💀";
-
-        res.json({
-            comment,
-            answer: video.title
-        });
-
-    } catch (err) {
-        console.log("ERROR:", err.message);
-
-        res.json({
-            comment: "failed to load video 😭",
-            answer: "unknown"
-        });
-    }
+    res.json({
+        comment,
+        answer: video.title,
+        tags: video.tags
+    });
 });
 
 // -----------------------------
