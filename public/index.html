@@ -16,9 +16,12 @@
 <script>
 let currentData = null;
 
+// ----------------------
+// LOAD NEW ROUND
+// ----------------------
 async function newRound() {
     try {
-        const res = await fetch("http://localhost:3000/round");
+        const res = await fetch("/round");
         currentData = await res.json();
 
         document.getElementById("comment").innerText = currentData.comment;
@@ -29,21 +32,25 @@ async function newRound() {
     }
 }
 
+// ----------------------
+// SUBMIT GUESS
+// ----------------------
 async function submitGuess() {
     const guess = document.getElementById("guess").value;
 
-    if (guess.length < 3) {
-        document.getElementById("result").innerText = "Type something real bro 😭";
+    if (!guess || guess.length < 2) {
+        document.getElementById("result").innerText = "Type something real 😭";
         return;
     }
 
-    const res = await fetch("http://localhost:3000/guess", {
+    const res = await fetch("/guess", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: {
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify({
             guess,
-            answer: currentData.answer,
-            tags: currentData.tags
+            answer: currentData.answer
         })
     });
 
@@ -52,14 +59,18 @@ async function submitGuess() {
     document.getElementById("result").innerText =
         "Score: " + data.score + "% | Answer: " + currentData.answer;
 
-    setTimeout(newRound, 3000);
+    setTimeout(newRound, 2000);
 }
 
+// ----------------------
+// SKIP ROUND
+// ----------------------
 function skipRound() {
     document.getElementById("result").innerText = "Skipped 😶";
     setTimeout(newRound, 1000);
 }
 
+// start game
 newRound();
 </script>
 
