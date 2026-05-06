@@ -3,17 +3,12 @@ const path = require("path");
 
 const app = express();
 
-// IMPORTANT: make sure static files work first
-app.use(express.static(path.join(__dirname, "public")));
+// serve static files
+app.use(express.static("public"));
 
-// homepage (safe fallback)
+// homepage (simple version)
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// debug route (super important for testing)
-app.get("/test", (req, res) => {
-    res.send("Server is alive");
 });
 
 const PORT = process.env.PORT || 3000;
