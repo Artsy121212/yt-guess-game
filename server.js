@@ -7,115 +7,128 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ⚠️ Put your API key here OR use process.env.YT_API_KEY on Render
 const YT_API_KEY = process.env.YT_API_KEY;
 
-/*
-  EXAMPLE VIDEO FORMAT YOU SHOULD HAVE:
-  {
-    id: "VIDEO_ID_HERE",
-    title: "Video title",
-    tags: []
-  }
-*/
+// -----------------------------
+// GET RANDOM VIDEO FROM YOUTUBE
+// -----------------------------
+async function getRandomVideo() {
+    const queries = [
+        "minecraft 100 days",
+        "fortnite funny moments",
+        "survival challenge",
+        "speedrun world record",
+        "hardcore minecraft"
+    ];
 
-// ----------------------------
-// YouTube comments fetch
-// ----------------------------
-async function getYouTubeComments(videoId) {
-    const url = "https://www.googleapis.com/youtube/v3/commentThreads";
+    const query = queries[Math.floor(Math.random() * queries.length)];
 
-    const res = await axios.get(url, {
-        params: {
-            part: "snippet",
-            videoId: videoId,
-            maxResults: 20,
-            textFormat: "plainText",
-            key: YT_API_KEY
+    const res = await axios.get(
+        "https://www.googleapis.com/youtube/v3/search",
+        {
+            params: {
+                key: YT_API_KEY,
+                part: "snippet",
+                q: query,
+                type: "video",
+                maxResults: 10
+            }
         }
-    });
+    );
+
+    const items = res.data.items;
+
+    if (!items || items.length === 0) {
+        throw new Error("No videos found");
+    }
+
+    const video = items[Math.floor(Math.random() * items.length)];
+
+    return {
+        id: video.id.videoId,
+        title: video.snippet.title
+    };
+}
+
+// -----------------------------
+// GET REAL YOUTUBE COMMENTS
+// -----------------------------
+async function getYouTubeComments(videoId) {
+    const res = await axios.get(
+        "https://www.googleapis.com/youtube/v3/commentThreads",
+        {
+            params: {
+                key: YT_API_KEY,
+                part: "snippet",
+                videoId: videoId,
+                maxResults: 20,
+                textFormat: "plainText"
+            }
+        }
+    );
 
     return res.data.items.map(
         item => item.snippet.topLevelComment.snippet.textDisplay
     );
 }
 
-// ----------------------------
-// Filter comments into usable hints
-// ----------------------------
+// -----------------------------
+// FILTER COMMENTS INTO HINTS
+// -----------------------------
 function filterHints(comments) {
     return comments.filter(c =>
         c &&
         c.length > 10 &&
         c.length < 140 &&
         !c.toLowerCase().includes("http") &&
+        !c.toLowerCase().includes("subscribe") &&
         !c.toLowerCase().includes("first")
     );
 }
 
-// ----------------------------
-// YOUR VIDEO SOURCE (replace this)
-// ----------------------------
-function getRandomVideo() {
-    const videos = [
-        {
-            id: "dQw4w9WgXcQ",
-            title: "Example Video",
-            tags: ["music"]
-        }
-        // add your own videos here
-    ];
-
-    return videos[Math.floor(Math.random() * videos.length)];
-}
-
-// ----------------------------
-// ROUTE: NEW ROUND
-// ----------------------------
+// -----------------------------
+// ROUND ROUTE
+// -----------------------------
 app.get("/round", async (req, res) => {
-    const video = getRandomVideo();
-
     try {
-        const comments = await getYouTubeComments(video.id);
+        const video = await getRandomVideo();
 
-        const filtered = filterHints(comments);
+        const comments = await getYouTubeComments(video.id);
+        const hints = filterHints(comments);
 
         const comment =
-            filtered[Math.floor(Math.random() * filtered.length)] ||
-            "this was actually insane 💀";
+            hints[Math.floor(Math.random() * hints.length)] ||
+            "this video was actually insane 💀";
 
         res.json({
             comment,
-            answer: video.title,
-            tags: video.tags
+            answer: video.title
         });
 
     } catch (err) {
-        console.log("YouTube API failed:", err.message);
+        console.log("ERROR:", err.message);
 
         res.json({
-            comment: "chat is dead on this one 💀",
-            answer: video.title,
-            tags: video.tags
+            comment: "failed to load video 😭",
+            answer: "unknown"
         });
     }
 });
 
-// ----------------------------
-// ROUTE: GUESS CHECK
-// ----------------------------
+// -----------------------------
+// GUESS ROUTE
+// -----------------------------
 app.post("/guess", (req, res) => {
     const { guess, answer } = req.body;
-
-    let score = 0;
 
     if (!guess || !answer) {
         return res.json({ score: 0 });
     }
 
-    // simple similarity check
     const g = guess.toLowerCase();
     const a = answer.toLowerCase();
+
+    let score = 0;
 
     if (g === a) {
         score = 100;
@@ -128,9 +141,9 @@ app.post("/guess", (req, res) => {
     res.json({ score });
 });
 
-// ----------------------------
+// -----------------------------
 // START SERVER
-// ----------------------------
+// -----------------------------
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
