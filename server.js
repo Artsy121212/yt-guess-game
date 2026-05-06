@@ -1,107 +1,115 @@
 const express = require("express");
 const path = require("path");
+const axios = require("axios");
 
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+const YT_API_KEY = process.env.YT_API_KEY;
+
 // -----------------------------
-// VIDEO DATABASE (ADD YOUR OWN)
+// RANDOM SEARCH → VIDEO PICKER
 // -----------------------------
-function getRandomVideo() {
-    const videos = [
-        {
-            title: "Minecraft Hardcore 100 Days",
-            tags: ["minecraft", "survival"]
-        },
-        {
-            title: "I Survived 100 Days in Minecraft",
-            tags: ["minecraft", "challenge"]
-        },
-        {
-            title: "Fortnite Funny Moments",
-            tags: ["fortnite", "gaming"]
-        },
-        {
-            title: "Speedrun World Record Attempt",
-            tags: ["speedrun", "gaming"]
-        }
+async function getRandomVideo() {
+    const queries = [
+        "minecraft 100 days",
+        "fortnite funny moments",
+        "speedrun world record",
+        "hardcore minecraft survival",
+        "roblox gameplay funny",
+        "insane gaming challenge"
     ];
 
-    return videos[Math.floor(Math.random() * videos.length)];
+    const query = queries[Math.floor(Math.random() * queries.length)];
+
+    const res = await axios.get(
+        "https://www.googleapis.com/youtube/v3/search",
+        {
+            params: {
+                key: YT_API_KEY,
+                part: "snippet",
+                q: query,
+                type: "video",
+                maxResults: 10
+            }
+        }
+    );
+
+    const items = res.data.items;
+
+    if (!items || items.length === 0) {
+        throw new Error("No videos found");
+    }
+
+    const video = items[Math.floor(Math.random() * items.length)];
+
+    return {
+        id: video.id.videoId,
+        title: video.snippet.title
+    };
 }
 
 // -----------------------------
-// HINT SYSTEM (NO API NEEDED)
+// SIMPLE HINT GENERATOR (NO COMMENTS API)
 // -----------------------------
-function generateHints(video) {
+function generateHint(video) {
     const title = video.title.toLowerCase();
-    const tags = video.tags || [];
-    const hints = [];
 
-    // Minecraft hints
-    if (title.includes("minecraft") || tags.includes("minecraft")) {
+    const hints = [
+        "this one got crazy fast 💀",
+        "people struggled on this one",
+        "this was harder than expected"
+    ];
+
+    if (title.includes("minecraft")) {
         hints.push(
-            "minecraft content is always chaos 💀",
-            "bro really built a whole life out of blocks",
-            "survival mode is NOT peaceful here",
-            "why is minecraft always suffering"
+            "block game chaos incoming",
+            "survival in cubes is suffering",
+            "minecraft players are built different"
         );
     }
 
-    // 100 days challenge
-    if (title.includes("100 days")) {
+    if (title.includes("fortnite")) {
         hints.push(
-            "100 days is insane dedication",
-            "bro did NOT touch grass for months",
-            "this challenge takes patience fr",
-            "i would’ve quit day 2 💀"
+            "build fights went insane",
+            "someone cranked 90s for survival",
+            "fortnite chaos moment"
         );
     }
 
-    // Fortnite
-    if (title.includes("fortnite") || tags.includes("fortnite")) {
-        hints.push(
-            "build fights got crazy in this one",
-            "bro was cranking 90s for survival",
-            "fortnite chaos energy 💀"
-        );
-    }
-
-    // Speedrun
     if (title.includes("speedrun")) {
         hints.push(
-            "this run was way too optimized",
-            "milliseconds mattered in this one",
-            "speedrunners are built different"
+            "milliseconds mattered here",
+            "speedrunners are unreal",
+            "perfect execution needed"
         );
     }
 
-    // fallback hints
-    hints.push(
-        "this looked harder than expected",
-        "people struggled a LOT in this one",
-        "this challenge went off the rails 💀"
-    );
-
-    return hints;
+    return hints[Math.floor(Math.random() * hints.length)];
 }
 
 // -----------------------------
 // ROUND ROUTE
 // -----------------------------
-app.get("/round", (req, res) => {
-    const video = getRandomVideo();
-    const hints = generateHints(video);
+app.get("/round", async (req, res) => {
+    try {
+        const video = await getRandomVideo();
 
-    const comment = hints[Math.floor(Math.random() * hints.length)];
+        res.json({
+            comment: generateHint(video),
+            answer: video.title
+        });
 
-    res.json({
-        comment,
-        answer: video.title,
-        tags: video.tags
-    });
+    } catch (err) {
+        console.log(err.message);
+
+        res.json({
+            comment: "failed to load round 😭",
+            answer: "unknown"
+        });
+    }
 });
 
 // -----------------------------
@@ -123,15 +131,11 @@ app.post("/guess", (req, res) => {
         score = 100;
     } else if (a.includes(g) || g.includes(a)) {
         score = 60;
-    } else {
-        score = 0;
     }
 
     res.json({ score });
 });
 
-// -----------------------------
-// START SERVER
 // -----------------------------
 const PORT = process.env.PORT || 3000;
 
