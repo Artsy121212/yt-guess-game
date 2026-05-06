@@ -18,7 +18,7 @@ let currentData = null;
 
 async function newRound() {
     try {
-        const res = await fetch("http://localhost:3000/round");
+        const res = await fetch("/round");
         currentData = await res.json();
 
         document.getElementById("comment").innerText = currentData.comment;
